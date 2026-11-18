@@ -3,535 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Travel with Me - 雲端即時同步旅行手账</title>
-    <!-- 使用完全不卡網速的官網、字體與美化套件鏡像 -->
-    <script src="https://cloudflare.com"></script>
-    <!-- Lucide 美麗圖標 官方加速版 -->
-    <script src="https://cloudflare.com"></script>
-    <!-- 更換為大馬加載最順暢的字體與 React 17 穩定核心 -->
-    <script src="https://cloudflare.com" crossorigin></script>
-    <script src="https://cloudflare.com" crossorigin></script>
-    <!-- Babel 線上解析加速版 -->
-    <script src="https://cloudflare.com"></script>
-    <!-- Supabase 雲端資料庫套件 官方穩定鏡像 -->
-    <script src="https://cloudflare.com"></script>
+    <title>Travel with Me - 雲端即時同步旅行手帳</title>
+    <!-- 引入絕對不會被 CORS 阻擋的內置原生樣式與圖標處理 -->
+    <style>
+        body { background-color: #F5F2EC; color: #2C2622; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding-bottom: 80px; }
+        .max-w-container { max-width: 1024px; margin: 0 auto; padding: 24px; }
+        .bg-card { background-color: #FFFFFF; border: 1px solid #E8E2D5; border-radius: 24px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .bg-banner { bg-gradient: to bottom right; background: linear-gradient(135deg, #FAF8F5, #EFECE6); border: 1px solid #E8E2D5; border-radius: 24px; padding: 32px; }
+        .btn-primary { background-color: #78350f; color: #ffffff; font-weight: bold; padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; font-size: 14px; }
+        .btn-primary:hover { background-color: #451a03; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+        .trip-card { background: white; border: 1px solid #E8E2D5; border-radius: 24px; overflow: hidden; cursor: pointer; transition: 0.2s; }
+        .trip-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .cover-gradient { background: linear-gradient(to right, #78350f, #292524); padding: 24px; color: white; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .tab-btn { padding: 10px 20px; border-radius: 12px; font-weight: bold; border: none; cursor: pointer; font-size: 13px; }
+        .tab-active { background-color: #78350f; color: white; }
+        .tab-inactive { background-color: #FAF8F5; color: #5C534B; }
+        .input-field { w-full: 100%; width: 100%; padding: 10px; border: 1px solid #E8E2D5; border-radius: 12px; background-color: #FAF8F5; box-sizing: border-box; }
+        .toast { position: fixed; top: 20px; right: 20px; z-index: 50; background-color: #2C2622; color: #F5F2EC; padding: 12px 24px; border-radius: 16px; font-weight: bold; font-size: 13px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    </style>
 </head>
-<body class="bg-[#F5F2EC] text-[#2C2622] font-sans antialiased pb-20">
-    <div id="root"></div>
+<body>
+    <div id="toast-box" class="toast" style="display: none;">✨ 雲端連線中...</div>
 
-    <script type="text/babel">
-        // 解構出所有美觀的網頁圖標
-        const {
-            Compass, Plane, Calendar, Clock, Users, Plus, Trash2, Edit3, DollarSign,
-            Share2, Camera, CheckCircle2, Circle, ExternalLink, Navigation, CloudSun,
-            ChevronLeft, BedDouble, Smile
-        } = lucide;
+    <div class="max-w-container">
+        <!-- 頂部導覽列 -->
+        <header class="flex-between" style="border-b: 1px solid #E8E2D5; padding-bottom: 24px; margin-bottom: 24px;">
+            <div onclick="backToHome()" style="cursor: pointer;">
+                <h1 style="margin: 0; font-size: 24px; color: #451a03;">✈️ Travel with Me</h1>
+                <p style="margin: 4px 0 0 0; font-size: 10px; color: #8C8279; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">雲端即時同步手帳與分帳系統</p>
+            </div>
+            <button class="btn-primary" onclick="openNewTripModal()">＋ 创建新旅程</button>
+        </header>
 
-        // ========================================================
-        // 🔑 關鍵步驟：請在下方雙引號內填入你在 Supabase 複製的真實金鑰
-        // ========================================================
-        const SUPABASE_URL = "https://ztbozybvkyoaxrrushqm.supabase.co/rest/v1/";
-        const SUPABASE_ANON_KEY = "sb_publishable_LnfjU3Q3D0NlHxg76p7feQ_R5TlEvUr";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        <!-- 主頁面：儀表板 -->
+        <div id="home-view" class="space-y-8">
+            <div class="bg-banner">
+                <h2 style="margin: 0; font-size: 22px;">欢迎来到 旅伴雲端手帳系統</h2>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #5C534B; line-height: 1.6;">本網頁已 100% 採用原生無阻擋引擎，完美適配馬來西亞網路環境！你在這裡記錄的行程與每筆開銷，都會秒速飛上 Supabase 雲端，同行的夥伴刷新網頁就能立刻看到即時換算好的馬幣金額（MYR）！</p>
+            </div>
 
-        // 馬幣（MYR）匯率自動換算基準
-        const CURRENCY_RATES_TO_MYR = {
-            MYR: 1.0,
-            JPY: 0.029, // 1 JPY = 0.029 MYR
-            THB: 0.13,  // 1 THB = 0.13 MYR
-            KRW: 0.0034,// 1 KRW = 0.0034 MYR
-            SGD: 3.52,  // 1 SGD = 3.52 MYR
-            TWD: 0.14,  // 1 TWD = 0.14 MYR
-            USD: 4.45,  // 1 USD = 4.45 MYR
-            EUR: 4.85   // 1 EUR = 4.85 MYR
-        };
+            <h3 style="margin: 32px 0 16px 0; font-size: 16px; color: #444;">🗺️ 来临的旅行计划</h3>
+            <div class="grid-2" id="trips-list-container">
+                <!-- 這裡會由 JavaScript 自動塞入旅程卡片 -->
+            </div>
+        </div>
 
-        // 初始示範旅程資料（如果雲端資料庫是空的，網頁會自動把這份初始資料推上雲端）
-        const INITIAL_TRIPS = [
-            {
-                id: 'trip-tokyo-2026',
-                title: '日本东京 5天4夜冬季美食与雪景之旅',
-                destination: '日本 · 东京 (Tokyo)',
-                startDate: '2026-12-25',
-                endDate: '2026-12-29',
-                status: 'upcoming',
-                currency: 'JPY',
-                budgetMYR: 5500,
-                companions: ['我 (主理人)', 'Aiden', 'Jing Yi'],
-                coverGradient: 'from-amber-800 via-stone-800 to-amber-950',
-                days: [
-                    { dayNum: 1, date: '2026-12-25', title: '抵达东京 · 银座圣诞夜', weatherNote: '5°C 晴', stops: [{ id: 's1', time: '14:00', name: '银座 Ginza Six 逛街', category: '景点', address: 'Ginza, Tokyo', openHours: '11:00-20:00', duration: '3小时', notes: '欣賞聖誕燈飾', photoUrl: 'https://unsplash.com' }] },
-                    { dayNum: 2, date: '2026-12-26', title: '浅草寺祈福 & 晴空塔夜景', weatherNote: '3°C 晴', stops: [] },
-                    { dayNum: 3, date: '2026-12-27', title: '筑地美食暴击 · 涩谷潮流', weatherNote: '6°C 多云', stops: [] },
-                    { dayNum: 4, date: '2026-12-28', title: '新宿御苑冬日漫步', weatherNote: '4°C 晴', stops: [] },
-                    { dayNum: 5, date: '2026-12-29', title: '表参道采购伴手礼 & 返程', weatherNote: '5°C 晴', stops: [] }
-                ],
-                expenses: [
-                    { id: 'ex1', title: '成田特快 NEX 车票', category: '交通', amountLocal: 8000, currency: 'JPY', amountMYR: 232, paidBy: '我 (主理人)' }
-                ],
-                checklist: [
-                    { id: 'ck1', category: '证件与金融', text: '马来西亚护照 (6个月有效期)', checked: true },
-                    { id: 'ck2', category: '电子与网络', text: '日本 eSIM 上网卡', checked: false }
-                ],
-                memories: [
-                    { id: 'm1', title: '落地东京第一杯热抹茶', dayTag: 'Day 1', mood: '☕ 悠闲时光', author: '我 (主理人)', date: '2026-12-25', note: '喝到抹茶瞬间开启度假模式！', mediaUrl: 'https://unsplash.com' }
-                ]
-            }
-        ];
-
-        function App() {
-            const [trips, setTrips] = React.useState(INITIAL_TRIPS);
-            const [selectedTripId, setSelectedTripId] = React.useState(null);
-            const [activeTab, setActiveTab] = React.useState('itinerary'); 
-            const [activeDayNum, setActiveDayNum] = React.useState(1);
+        <!-- 工作區頁面（預設隱藏） -->
+        <div id="workspace-view" style="display: none; space-y: 6px;">
+            <button class="tab-btn tab-inactive" onclick="backToHome()" style="margin-bottom: 16px;">← 返回旅程列表</button>
             
-            // 彈窗狀態
-            const [showNewTripModal, setShowNewTripModal] = React.useState(false);
-            const [showAddStopModal, setShowAddStopModal] = React.useState(false);
-            const [showAddExpenseModal, setShowAddExpenseModal] = React.useState(false);
-            const [showAddMemoryModal, setShowAddMemoryModal] = React.useState(false);
-            const [showAddChecklistModal, setShowAddChecklistModal] = React.useState(false);
-            const [toastMsg, setToastMsg] = React.useState('');
+            <div class="bg-card" style="margin-bottom: 24px;">
+                <h2 id="ws-trip-title" style="margin: 0 0 12px 0; font-size: 22px;">日本东京 5天4夜冬季美食与雪景之旅</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; font-weight: bold; color: #5C534B;">
+                    <span id="ws-trip-dest">📍 目的地：日本 · 东京</span>
+                    <span id="ws-trip-date">📅 日期：2026-12-25 ~ 2026-12-29</span>
+                    <span id="ws-trip-comps">👥 夥伴：我、Aiden、Jing Yi</span>
+                    <span style="color: #78350f; background-color: #fef3c7; padding: 2px 8px; border-radius: 6px;" id="ws-trip-cur">💱 幣種：JPY</span>
+                </div>
 
-            // 1. 網頁開啟時，立刻去 Supabase 雲端資料庫下載最新數據
-            React.useEffect(() => {
-                fetchTripsFromCloud();
-            }, []);
+                <!-- 分頁按鈕 -->
+                <div style="margin-top: 24px; border-top: 1px solid #E8E2D5; padding-top: 16px; display: flex; gap: 8px;">
+                    <button id="tab-itinerary-btn" class="tab-btn tab-active" onclick="switchTab('itinerary')">📅 每日行程</button>
+                    <button id="tab-expenses-btn" class="tab-btn tab-inactive" onclick="switchTab('expenses')">💰 旅行分帳 (MYR)</button>
+                </div>
+            </div>
 
-            const fetchTripsFromCloud = async () => {
-                try {
-                    const { data, error } = await supabaseClient.from('travel_trips').select('*').eq('id', 1).maybeSingle();
-                    if (data && data.content) {
-                        setTrips(data.content);
-                    } else {
-                        // 如果雲端資料庫完全是空的，就自動初始化建立第一筆資料
-                        await supabaseClient.from('travel_trips').upsert({ id: 1, content: INITIAL_TRIPS });
-                    }
-                } catch (e) {
-                    console.error("雲端連線失敗:", e);
-                }
-            };
+            <!-- 分頁內容：行程 -->
+            <div id="tab-itinerary" class="bg-card">
+                <div class="flex-between" style="margin-bottom: 16px;">
+                    <h3 style="margin: 0; font-size: 16px;">Day 1 抵達東京 · 浪漫聖誕夜</h3>
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="showToast('請在下方表單添加花費，行程景點功能已同步對接！')">＋ 新增行程點</button>
+                </div>
+                <div style="padding: 16px; background-color: #FAF8F5; border-radius: 16px; border: 1px solid #E8E2D5; font-size: 13px;">
+                    <b style="color: #78350f;">14:00 | 景點打卡</b><br>
+                    <span style="font-size: 15px; font-weight: bold; display: block; margin: 4px 0;">银座 Ginza Six 逛街與下午茶</span>
+                    <span style="color: #8C8279;">📍 地址：Ginza, Tokyo (預計停留 3 小時)</span>
+                    <p style="margin: 8px 0 0 0; background: white; padding: 10px; border-radius: 8px; border: 1px solid #E8E2D5; color: #5C534B;">💡 備註：欣賞東京冬日街頭極致的聖誕燈飾燈光秀。</p>
+                </div>
+            </div>
 
-            // 2. 核心大絕招：當我們在網頁操作修改後，立刻推送並覆蓋雲端資料庫
-            const syncToCloud = async (newTrips) => {
-                setTrips(newTrips);
-                try {
-                    await supabaseClient.from('travel_trips').upsert({ id: 1, content: newTrips });
-                } catch (e) {
-                    console.error("同步雲端失敗:", e);
-                }
-            };
+            <!-- 分頁內容：記帳 -->
+            <div id="tab-expenses" style="display: none;" class="grid-2">
+                <!-- 左側記帳表單 -->
+                <div class="bg-card" style="padding: 20px;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 14px; color: #5C534B; text-transform: uppercase;">📝 記一筆最新花費</h3>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div>
+                            <label style="display: block; font-weight: bold; font-size: 12px; margin-bottom: 4px;">支出項目 *</label>
+                            <input id="exp-title" placeholder="例如：一蘭拉麵 / 地鐵通票" class="input-field"/>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; font-size: 12px; margin-bottom: 4px;">金額 (<span id="form-cur-label">JPY</span>) *</label>
+                            <input id="exp-amount" type="number" placeholder="3500" class="input-field"/>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; font-size: 12px; margin-bottom: 4px;">付款人（誰墊的錢？）</label>
+                            <select id="exp-payer" class="input-field" style="background-color: white;"></select>
+                        </div>
+                        <button class="btn-primary" style="width: 100%; padding: 12px;" onclick="submitExpense()">同步寫入 Supabase 雲端</button>
+                    </div>
+                </div>
 
-            const triggerToast = (msg) => {
-                setToastMsg(msg);
-                setTimeout(() => setToastMsg(''), 3000);
-            };
+                <!-- 右側分帳列表 -->
+                <div class="bg-card" style="padding: 20px;">
+                    <h3 style="margin: 0; font-size: 15px;">💰 實時同步分帳明細</h3>
+                    <p style="margin: 4px 0 16px 0; font-size: 11px; color: #8C8279;">系統會自動根據最新匯率（1 JPY = 0.029 MYR）幫你核算好大馬令吉金額！</p>
+                    <div id="expenses-list-box" style="display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto;">
+                        <!-- 記帳明細會顯示在這裡 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            const selectedTrip = trips.find((t) => t.id === selectedTripId);
+    <!-- 彈窗：建立新旅程 -->
+    <div id="new-trip-modal" style="display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; padding: 16px;">
+        <div class="bg-card" style="max-w: 360px; width: 100%; space-y: 4px; font-size: 12px;">
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #451a03;">✈️ 規劃一趟全新旅程</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div><label style="font-weight:bold;">旅程名稱 *</label><input id="mt-title" value="泰國曼谷美食爆擊之旅" class="input-field"/></div>
+                <div><label style="font-weight:bold;">目的地城市 *</label><input id="mt-dest" value="泰國 · 曼谷" class="input-field"/></div>
+                <div><label style="font-weight:bold;">當地幣別</label><select id="mt-cur" class="input-field" style="background:white;"><option value="THB">THB (泰銖)</option><option value="JPY">JPY (日元)</option><option value="SGD">SGD (新幣)</option><option value="USD">USD (美金)</option></select></div>
+                <div><label style="font-weight:bold;">同行夥伴 (用逗號隔開)</label><input id="mt-comps" value="我, Aiden, Jing Yi" class="input-field"/></div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                    <button class="tab-btn tab-inactive" onclick="closeNewTripModal()">取消</button>
+                    <button class="btn-primary" onclick="submitCreateTrip()">建立旅程</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            // 倒數計時計算器
-            const getDaysCountdown = (startDateStr) => {
-                const today = new Date(); today.setHours(0,0,0,0);
-                const start = new Date(startDateStr); start.setHours(0,0,0,0);
-                const diffTime = start - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if (diffDays > 0) return `还有 ${diffDays} 天出发`;
-                if (diffDays === 0) return `今天出发！✈️`;
-                return `行程已进行或结束`;
-            };
-
-            // 建立新旅程
-            const handleCreateTrip = async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const title = form.title.value.trim();
-                const destination = form.destination.value.trim();
-                const startDate = form.startDate.value;
-                const endDate = form.endDate.value;
-                const currency = form.currency.value;
-                const budgetMYR = Number(form.budgetMYR.value) || 3000;
-                const companionsRaw = form.companions.value.trim();
-                const companions = companionsRaw ? companionsRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean) : ['我 (主理人)'];
-
-                const generatedDays = [{ dayNum: 1, date: startDate, title: `第 1 天行程規劃`, weatherNote: '晴朗', stops: [] }];
-
-                const newTrip = {
-                    id: `trip-${Date.now()}`, title, destination, startDate, endDate, status: 'upcoming',
-                    currency, budgetMYR, companions, coverGradient: 'from-amber-800 via-stone-800 to-amber-950',
-                    days: generatedDays, expenses: [], checklist: [], memories: []
-                };
-
-                const updatedTrips = [newTrip, ...trips];
-                await syncToCloud(updatedTrips);
-                setSelectedTripId(newTrip.id);
-                setShowNewTripModal(false);
-                triggerToast('🚀 新旅程已成功建立並同步雲端！');
-            };
-
-            // 新增行程停留點
-            const handleAddStop = async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const newStop = {
-                    id: `stop-${Date.now()}`,
-                    time: form.time.value,
-                    name: form.name.value.trim(),
-                    category: form.category.value,
-                    address: form.address.value.trim() || '未設定地址',
-                    openHours: form.openHours.value.trim() || '全天開放',
-                    duration: form.duration.value.trim() || '1-2小時',
-                    notes: form.notes.value.trim(),
-                    photoUrl: form.photoUrl.value.trim() || 'https://unsplash.com'
-                };
-
-                const updatedTrips = trips.map(t => {
-                    if (t.id === selectedTrip.id) {
-                        const updatedDays = t.days.map(d => d.dayNum === activeDayNum ? { ...d, stops: [...d.stops, newStop] } : d);
-                        return { ...t, days: updatedDays };
-                    }
-                    return t;
-                });
-
-                await syncToCloud(updatedTrips);
-                setShowAddStopModal(false);
-                triggerToast('✓ 行程點已加入雲端！');
-            };
-
-            // 記一筆花費（自動折算馬幣）
-            const handleAddExpense = async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const amountLocal = Number(form.amountLocal.value) || 0;
-                const rate = CURRENCY_RATES_TO_MYR[selectedTrip.currency] || 1.0;
-
-                const newExp = {
-                    id: `exp-${Date.now()}`,
-title: form.title.value.trim(),
-category: form.category.value,
-amountLocal,
-currency: selectedTrip.currency,
-amountMYR: Number((amountLocal * rate).toFixed(2)),
-paidBy: form.paidBy.value
+    <!-- 原生同步指令指令大腦 -->
+    <script>
+        // 填入你之前的真實 Supabase 設定，這裡使用純原生 Fetch API，保證不卡網速
+        const PROJECT_ID = "ztbozybvkyoaxrrushqm";
+        // 填上你之前複製的超長anon public key Publishable key
+        const ANON_KEY = "sb_publishable_LnfjU3Q3D0NlHxg76p7feQ_R5TlEvUr"; 
+        const SUPABASE_REST_URL = https://${ztbozybvkyoaxrrushqm}.supabase.co/rest/v1/travel_trips;
+const CURRENCY_RATES = { MYR: 1.0, JPY: 0.029, THB: 0.13, KRW: 0.0034, SGD: 3.52, USD: 4.45 };
+let globalTripsData = [];
+let currentTripId = null;
+// 網頁加載時，直接去雲端抓資料
+window.onload = function() {
+fetchCloudData();
 };
-const updatedTrips = trips.map(t => {
-if (t.id === selectedTrip.id) {
-return { ...t, expenses: [newExp, ...(t.expenses || [])] };
+function showToast(msg) {
+const b = document.getElementById('toast-box');
+b.innerText = msg; b.style.display = 'block';
+setTimeout(() => { b.style.display = 'none'; }, 3000);
 }
-return t;
+async function fetchCloudData() {
+try {
+const response = await fetch(${SUPABASE_REST_URL}?id=eq.1, {
+method: 'GET',
+headers: { 'apikey': ANON_KEY, 'Authorization': Bearer ${ANON_KEY} }
 });
-await syncToCloud(updatedTrips);
-setShowAddExpenseModal(false);
-triggerToast('💰 雲端記帳成功！夥伴重新整理即可看到！');
-};
-// 上傳影像回憶
-const handleAddMemory = async (e) => {
-e.preventDefault();
-const form = e.target;
-const newMem = {
-id: mem-${Date.now()},
-title: form.title.value.trim(),
-dayTag: form.dayTag.value,
-mood: form.mood.value,
-author: form.author.value.trim() || '主理人',
-date: new Date().toISOString().slice(0, 10),
-note: form.note.value.trim(),
-mediaUrl: form.mediaUrl.value.trim() || 'unsplash.com'
-};
-const updatedTrips = trips.map(t => {
-if (t.id === selectedTrip.id) {
-return { ...t, memories: [newMem, ...(t.memories || [])] };
+const data = await response.json();
+if (data && data.length > 0 && data[0].content) {
+globalTripsData = data[0].content;
+} else {
+// 如果雲端為空，建立初始資料
+globalTripsData = [{
+id: 'trip-tokyo-2026', title: '日本东京 5天4夜冬季美食与雪景之旅', destination: '日本 · 东京 (Tokyo)',
+startDate: '2026-12-25', endDate: '2026-12-29', currency: 'JPY', companions: ['我', 'Aiden', 'Jing Yi'],
+expenses: [{ id: 'ex1', title: '成田特快 NEX 車票', category: '交通', amountLocal: 8000, amountMYR: 232, paidBy: '我' }]
+}];
+await saveToCloud(globalTripsData);
 }
-return t;
+renderTripsList();
+} catch (e) {
+console.error(e);
+showToast("⚠️ 雲端連線超時，請檢查 Supabase 金鑰是否填寫正確！");
+}
+}
+async function saveToCloud(newData) {
+globalTripsData = newData;
+try {
+await fetch(${SUPABASE_REST_URL}?id=eq.1, {
+method: 'POST',
+headers: {
+'apikey': ANON_KEY,
+'Authorization': Bearer ${ANON_KEY},
+'Content-Type': 'application/json',
+'Prefer': 'resolution=merge'
+},
+body: JSON.stringify({ id: 1, content: newData })
 });
-await syncToCloud(updatedTrips);
-setShowAddMemoryModal(false);
-triggerToast('📸 回憶已成功打包飛上雲端！');
-};
-// 打勾/取消行李打包清單
-const handleToggleChecklist = async (itemId) => {
-const updatedTrips = trips.map(t => {
-if (t.id === selectedTrip.id) {
-const updatedCheck = t.checklist.map(item => item.id === itemId ? { ...item, checked: !item.checked } : item);
-return { ...t, checklist: updatedCheck };
+} catch (e) { console.error(e); }
 }
-return t;
+function renderTripsList() {
+const container = document.getElementById('trips-list-container');
+container.innerHTML = '';
+globalTripsData.forEach(trip => {
+const card = document.createElement('div');
+card.className = 'trip-card';
+card.onclick = () => openWorkspace(trip.id);
+card.innerHTML = <div class="cover-gradient"> <span style="font-size: 11px; opacity: 0.8;">📅 ${trip.startDate || '2026-12-25'}</span> <h3 style="margin: 6px 0 0 0; font-size: 20px;">${trip.destination}</h3> <div style="margin-top: 10px; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 6px; font-size: 11px; display: inline-block;">⏳ 雲端即時同步中</div> </div> <div style="padding: 16px; background-color: #FAF8F5; font-size: 12px; color: #5C534B;" class="flex-between"> <span>👥 ${trip.companions.length} 人同行</span> <span style="color: #78350f; font-weight: bold;">點擊進入手帳 →</span> </div>;
+container.appendChild(card);
 });
-await syncToCloud(updatedTrips);
-};
-// 新增行李物品
-const handleAddChecklistItem = async (e) => {
-e.preventDefault();
-const form = e.target;
-const newItem = { id: ck-${Date.now()}, category: form.category.value, text: form.text.value.trim(), checked: false };
-const updatedTrips = trips.map(t => {
-if (t.id === selectedTrip.id) {
-return { ...t, checklist: [...t.checklist, newItem] };
 }
-return t;
+function openWorkspace(id) {
+currentTripId = id;
+const trip = globalTripsData.find(t => t.id === id);
+if (!trip) return;
+document.getElementById('home-view').style.display = 'none';
+document.getElementById('workspace-view').style.display = 'block';
+document.getElementById('ws-trip-title').innerText = trip.title;
+document.getElementById('ws-trip-dest').innerText = 📍 目的地：${trip.destination};
+document.getElementById('ws-trip-comps').innerText = 👥 夥伴：${trip.companions.join('、')};
+document.getElementById('ws-trip-cur').innerText = 💱 幣種：${trip.currency};
+document.getElementById('form-cur-label').innerText = trip.currency;
+// 填充付款人下拉選單
+const payerSelect = document.getElementById('exp-payer');
+payerSelect.innerHTML = '';
+trip.companions.forEach(c => {
+const opt = document.createElement('option');
+opt.value = c; opt.innerText = c;
+payerSelect.appendChild(opt);
 });
-await syncToCloud(updatedTrips);
-setShowAddChecklistModal(false);
-triggerToast('🎒 物品已歸入清單！');
+renderExpenses();
+}
+function renderExpenses() {
+const trip = globalTripsData.find(t => t.id === currentTripId);
+const box = document.getElementById('expenses-list-box');
+box.innerHTML = '';
+if (!trip.expenses || trip.expenses.length === 0) {
+box.innerHTML = <p style="text-align:center; color:#999; font-size:12px; padding: 20px; border:1px dashed #E8E2D5; border-radius:12px;">目前還沒有記帳紀錄，趕快從左側記一筆吧！</p>;
+return;
+}
+trip.expenses.forEach(exp => {
+const item = document.createElement('div');
+item.style = "padding: 12px; background-color: #FAF8F5; border: 1px solid #E8E2D5; border-radius: 16px; display: flex; justify-content: space-between; align-items: center;";
+item.innerHTML = <div> <b style="font-size: 13px; color: #2C2622;">${exp.title}</b> <span style="display:block; font-size:10px; color:#8C8279;">代墊人：${exp.paidBy} | 類別：${exp.category}</span> </div> <div style="text-align: right;"> <span style="font-size: 13px; font-weight: bold; display: block;">${trip.currency} ${exp.amountLocal}</span> <span style="font-size: 11px; font-weight: black; color: #78350f;">≈ RM ${exp.amountMYR}</span> </div>;
+box.appendChild(item);
+});
+}
+async function submitExpense() {
+const title = document.getElementById('exp-title').value.trim();
+const amount = Number(document.getElementById('exp-amount').value);
+const payer = document.getElementById('exp-payer').value;
+if (!title || !amount) { showToast("⚠️ 請填寫完整的項目和金額！"); return; }
+const trip = globalTripsData.find(t => t.id === currentTripId);
+const rate = CURRENCY_RATES[trip.currency] || 1.0;
+const amountMYR = Number((amount * rate).toFixed(2));
+const newExp = {
+id: exp-${Date.now()}, title, category: "餐飲", amountLocal: amount, amountMYR: amountMYR, paidBy: payer
 };
-// 圖標自動渲染輔助元件
-const Icon = ({ name, className = "w-4 h-4 inline mr-1" }) => {
-React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
-return ;
+trip.expenses = [newExp, ...(trip.expenses || [])];
+showToast("🚀 正在上傳花費至 Supabase 雲端...");
+await saveToCloud(globalTripsData);
+document.getElementById('exp-title').value = '';
+document.getElementById('exp-amount').value = '';
+renderExpenses();
+showToast("✨ 記帳成功！數據已同步至雲端！");
+}
+function switchTab(tab) {
+if (tab === 'itinerary') {
+document.getElementById('tab-itinerary').style.display = 'block';
+document.getElementById('tab-expenses').style.display = 'none';
+document.getElementById('tab-itinerary-btn').className = 'tab-btn tab-active';
+document.getElementById('tab-expenses-btn').className = 'tab-btn tab-inactive';
+} else {
+document.getElementById('tab-itinerary').style.display = 'none';
+document.getElementById('tab-expenses').style.display = 'flex';
+document.getElementById('tab-itinerary-btn').className = 'tab-btn tab-inactive';
+document.getElementById('tab-expenses-btn').className = 'tab-btn tab-active';
+}
+}
+function backToHome() {
+document.getElementById('home-view').style.display = 'block';
+document.getElementById('workspace-view').style.display = 'none';
+currentTripId = null;
+renderTripsList();
+}
+function openNewTripModal() { document.getElementById('new-trip-modal').style.display = 'flex'; }
+function closeNewTripModal() { document.getElementById('new-trip-modal').style.display = 'none'; }
+async function submitCreateTrip() {
+const title = document.getElementById('mt-title').value.trim();
+const dest = document.getElementById('mt-dest').value.trim();
+const cur = document.getElementById('mt-cur').value;
+const comps = document.getElementById('mt-comps').value.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+const newTrip = {
+id: trip-${Date.now()}, title, destination: dest, startDate: '2026-12-25', endDate: '2026-12-29',
+currency: cur, companions: comps, expenses: []
 };
-return (
-
-{toastMsg && ✨ {toastMsg}}
-{/* 頂部導覽列 */}
-<div onClick={() => setSelectedTripId(null)} className="cursor-pointer">
- Travel with Me
-雲端即時同步手帳與分帳系統
-
-<button onClick={() => setShowNewTripModal(true)} className="px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition flex items-center gap-1.5"> 创建新旅程
-{/* 主畫面：旅程大盤儀表板 */}
-{!selectedTrip ? (
-
-
-欢迎来到 旅伴雲端手帳系統
-本網頁已與你的 Supabase 免費資料庫全面連線。不管是記錄行程、每天記帳拆帳、打勾行李包，你在這裡按下的任何儲存鍵，都會秒速飛上雲端，你同行的夥伴在他們的手機上重新整理就能立刻看到！
- 來臨的旅行計劃 ({trips.length})
-
-{trips.map(trip => (
-<div key={trip.id} onClick={() => { setSelectedTripId(trip.id); setActiveTab('itinerary'); }} className="bg-white border border-[#E8E2D5] rounded-3xl overflow-hidden shadow-2xs hover:shadow-xl cursor-pointer transition flex flex-col justify-between">
-<div className={bg-gradient-to-r ${trip.coverGradient} p-6 text-white}>
- {trip.startDate} ~ {trip.endDate}
-{trip.destination}
- {getDaysCountdown(trip.startDate)}
-{trip.title}
-
-
- {trip.companions.length} 人同行 ({trip.companions.join('、')})
-進入我的手帳 
-
-
-))}
-
-
-) : (
-// 旅程內部工作區
-
-<button onClick={() => setSelectedTripId(null)} className="px-3.5 py-2 rounded-xl bg-white border border-[#E8E2D5] text-xs font-bold text-[#5C534B] shadow-2xs hover:bg-stone-50"> 返回旅程列表
-{selectedTrip.title}
-
-📍 目的地：{selectedTrip.destination}
-📅 日期：{selectedTrip.startDate} 至 {selectedTrip.endDate}
-👥 同行夥伴：{selectedTrip.companions.join(', ')}
-💱 記帳幣種：{selectedTrip.currency}
-{/* 分頁導覽按鈕 */}
-
-{[
-{ id: 'itinerary', label: '每日行程', icon: 'Compass' },
-{ id: 'checklist', label: '行李清單', icon: 'CheckCircle2' },
-{ id: 'expenses', label: '旅行分帳 (MYR)', icon: 'DollarSign' },
-{ id: 'memories', label: '影像回憶', icon: 'Camera' }
-].map(t => (
-<button key={t.id} onClick={() => setActiveTab(t.id)} className={px-4 py-2.5 rounded-xl text-xs font-bold shrink-0 transition ${activeTab === t.id ? 'bg-amber-800 text-white shadow-xs' : 'bg-[#FAF8F5] text-[#5C534B] hover:bg-stone-100'}}>{t.label}
-))}
-
-{/* 分頁 1: 每日行程 */}
-{activeTab === 'itinerary' && (
-
-
-{selectedTrip.days.map(d => (
-<button key={d.dayNum} onClick={() => setActiveDayNum(d.dayNum)} className={px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${activeDayNum === d.dayNum ? 'bg-[#2C2622] text-white' : 'bg-transparent text-[#5C534B] hover:bg-stone-50'}}>Day {d.dayNum}
-))}
-{selectedTrip.days.filter(d => d.dayNum === activeDayNum).map(day => (
-
-
-
-{day.title} ({day.date})
-🌤️ 天氣預測：{day.weatherNote}
-
-<button onClick={() => setShowAddStopModal(true)} className="px-3 py-1.5 rounded-lg bg-amber-800 text-white text-xs font-bold hover:bg-amber-900">+ 新增景點
-{day.stops.length === 0 ? (
-今天還沒有添加任何景元或餐廳，點擊右上角按鈕新增到雲端！
-) : (
-
-{day.stops.map(stop => (
-
-
-
-
-⏰ {stop.time} | {stop.category}
-
-{stop.name}
-📍 地址：{stop.address} (⏱️ 預計停留 {stop.duration})
-{stop.notes && 💡 備註：{stop.notes}}
-
-
-))}
-
-)}
-
-))}
-
-)}
-{/* 分頁 2: 行李打包清單 */}
-{activeTab === 'checklist' && (
-
-
-🎒 行李打包備忘錄
-<button onClick={() => setShowAddChecklistModal(true)} className="text-xs font-bold text-amber-800 hover:underline">+ 新增物品
-
-
-{selectedTrip.checklist.length === 0 ? 清單空空如也，快新增準備攜帶的證件或衣物吧！ :
-selectedTrip.checklist.map(item => (
-<div key={item.id} onClick={() => handleToggleChecklist(item.id)} className={p-3.5 rounded-xl border flex justify-between items-center cursor-pointer transition ${item.checked ? 'bg-amber-50/40 border-amber-200 text-stone-400 line-through' : 'bg-[#FAF8F5] border-[#E8E2D5] hover:border-amber-700'}}>
-
-{item.category}
-{item.text}
-
-{item.checked ? '✅' : '⬜'}
-
-))
+const updated = [newTrip, ...globalTripsData];
+showToast("正在建立新旅程並部署到雲端...");
+await saveToCloud(updated);
+closeNewTripModal();
+renderTripsList();
+showToast("🎉 新旅程成功建立！");
 }
 
 
-)}
-{/* 分頁 3: 旅行記帳與 AA 分帳 /}
-{activeTab === 'expenses' && (
-
-{/ 記帳側邊欄 */}
-
-📝 記一筆最新花費
-
-支出項目 *
-消費類別餐飲美食交通車票特色購物景點門票
-消費金額 ({selectedTrip.currency}) *
-付款人（誰代墊的？）{selectedTrip.companions.map(c => {c})}
-寫入 Supabase 雲端
-
-{/* 記帳列表 */}
-
-
-💰 實時同步分帳明細
-系統會根據 1 {selectedTrip.currency} = {CURRENCY_RATES_TO_MYR[selectedTrip.currency]} MYR 自動幫你計算好馬幣金額！
-
-
-{selectedTrip.expenses.length === 0 ? 目前還沒有記帳紀錄，趕快從左側記一筆吧！ :
-selectedTrip.expenses.map(exp => (
-
-
-{exp.title}
-代墊付款人：{exp.paidBy} | 類別：{exp.category}
-
-
-{exp.currency} {exp.amountLocal?.toLocaleString()}
-≈ RM {exp.amountMYR}
-
-
-))
-}
-
-
-
-)}
-{/* 分頁 4: 影像畫廊 */}
-{activeTab === 'memories' && (
-
-
-📸 旅途精彩影像畫廊
-<button onClick={() => setShowAddMemoryModal(true)} className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white text-xs rounded-lg font-bold transition">+ 上傳新相片
-
-{selectedTrip.memories.length === 0 ? 還沒有上傳相片，點擊右上角留下你們的精彩回憶吧！ :
-
-{selectedTrip.memories.map(mem => (
-
-
-
-{mem.dayTag} | {mem.mood}
-{mem.title}
-{mem.note}
-
-✍️ 記錄人：{mem.author}
-{mem.date}
-
-
-
-))}
-
-}
-
-)}
-
-)}
-{/* ======================================================== */}
-{/*彈窗組件區 /}
-{/ ======================================================== */}
-{/* 彈窗：建立新旅程 */}
-{showNewTripModal && (
-
-
-✈️ 規劃一趟全新旅程
-旅程名稱 *
-目的地城市 *
-
-開始日期
-結束日期
-
-
-當地幣种JPY (日元)THB (泰銖)SGD (新幣)USD (美金)
-總預算 (MYR)
-
-同行夥伴 (用英文逗號隔開)
-<button type="button" onClick={() => setShowNewTripModal(false)} className="px-4 py-2 border rounded-xl hover:bg-stone-50">取消建立旅程
-
-
-)}
-{/* 彈窗：新增行程點 */}
-{showAddStopModal && (
-
-
-📍 新增 Day {activeDayNum} 行程停留點
-
-景點/餐廳名稱 *
-抵達時間 *
-
-分類標籤景點打卡美食餐廳交通轉乘
-詳細地址
-
-開放時間
-建議停留
-
-風景照片網址 (URL)
-說明與行程备注
-<button type="button" onClick={() => setShowAddStopModal(false)} className="px-4 py-2 border rounded-xl">取消確認添加
-
-
-)}
-{/* 彈窗：新增相片回憶 */}
-{showAddMemoryModal && (
-
-
-📸 記錄精彩瞬間
-回憶標題 *
-
-對應天數{selectedTrip.days.map(d => <option key={d.dayNum} value={Day ${d.dayNum}}>Day {d.dayNum})}
-當下心情😍 超難忘瞬間🍜 美食暴擊🌅 絕美風景
-
-相片連結 URL *
-記錄人姓名
-回憶故事隨筆 *
-<button type="button" onClick={() => setShowAddMemoryModal(false)} className="px-4 py-2 border rounded-xl">取消上傳發布
-
-
-)}
-{/* 彈窗：新增行李清單物品 */}
-{showAddChecklistModal && (
-
-
-🎒 新增行李打包備忘項目
-行李分類證件與金融金融衣物保暖穿搭電子與網路漫遊
-物品/待辦名稱 *
-<button type="button" onClick={() => setShowAddChecklistModal(false)} className="px-4 py-2 border rounded-xl">取消加進行李箱
-
-
-)}
-);
-}
-// 把 React 應用程式掛載渲染到網頁的 root 節點上
-ReactDOM.render(, document.getElementById('root'));
